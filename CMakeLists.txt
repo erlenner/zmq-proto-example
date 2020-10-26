@@ -4,9 +4,15 @@ project(server)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-## Find required protobuf package
-#find_package(Protobuf REQUIRED)
-#include_directories(${Protobuf_INCLUDE_DIR})
+# Find required protobuf package
+find_package(Protobuf REQUIRED)
+include_directories(${Protobuf_INCLUDE_DIR})
+
+file(GLOB ProtoFiles "${CMAKE_CURRENT_SOURCE_DIR}/*.proto")
+PROTOBUF_GENERATE_CPP(ProtoSources ProtoHeaders ${ProtoFiles})
+add_library(protos STATIC ${ProtoSources} ${ProtoHeaders})
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(protos ${PROTOBUF_LIBRARY})
 
 # zmq
 find_package(PkgConfig)
@@ -17,6 +23,7 @@ add_executable(zmq-server
 )
 target_link_libraries(zmq-server
   ${ZMQ_LIBRARIES}
+  protos
 )
 install(TARGETS zmq-server DESTINATION bin)
 
@@ -26,5 +33,6 @@ add_executable(zmq-client
 )
 target_link_libraries(zmq-client
   ${ZMQ_LIBRARIES}
+  protos
 )
 install(TARGETS zmq-client DESTINATION bin)

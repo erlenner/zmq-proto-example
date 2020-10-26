@@ -1,7 +1,9 @@
 #include <string>
-#include <iostream>
+#include <stdio.h>
 
 #include <zmq.hpp>
+
+#include "protocol.pb.h"
 
 int main()
 {
@@ -17,9 +19,14 @@ int main()
 
   for (auto request_num = 0;; ++request_num)
   {
-    // send the request message
-    std::cout << "Sending Hello " << request_num << "..." << std::endl;
-    zmq::send_result_t sent = socket.send(zmq::buffer(data), zmq::send_flags::none);
+
+    protocol::msg_t msg;
+    msg.set_a(435);
+    msg.set_b(219);
+
+    std::string msg_serialized = msg.SerializeAsString();
+    printf("send %d %d\n", msg.a(), msg.b());
+    zmq::send_result_t sent = socket.send(zmq::buffer(msg_serialized), zmq::send_flags::none);
 
     // wait for reply from server
     zmq::message_t reply{};

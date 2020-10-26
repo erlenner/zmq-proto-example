@@ -1,9 +1,11 @@
 #include <string>
 #include <chrono>
 #include <thread>
-#include <iostream>
+#include <stdio.h>
 
 #include <zmq.hpp>
+
+#include "protocol.pb.h"
 
 int main() 
 {
@@ -14,9 +16,6 @@ int main()
   zmq::socket_t socket{context, zmq::socket_type::rep};
   socket.bind("tcp://*:5555");
 
-  // prepare some static data for responses
-  const std::string data{"World"};
-
   for (;;)
   {
     zmq::message_t request;
@@ -25,13 +24,15 @@ int main()
     zmq::recv_result_t received = socket.recv(request, zmq::recv_flags::none);
     if (received)
     {
-      std::cout << "Received " << request.to_string() << std::endl;
+      protocol::msg_t msg;
+      msg.ParseFromString(request.to_string());
+      printf("recv: %d %d\n", msg.a(), msg.b());
 
       // simulate work
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
       // send the reply to the client
-      zmq::send_result_t sent = socket.send(zmq::buffer(data), zmq::send_flags::none);
+      zmq::send_result_t sent = socket.send(zmq::message_t(0), zmq::send_flags::none);
     }
   }
 
