@@ -16,7 +16,7 @@ int main()
   zmq::socket_t socket{context, zmq::socket_type::rep};
   socket.bind("tcp://*:5555");
 
-  for (;;)
+  while (1)
   {
     zmq::message_t request;
 
@@ -30,12 +30,15 @@ int main()
       {
         protocol::msg_t msg;
         any.UnpackTo(&msg);
-        printf("recv: %d %d\n", msg.a(), msg.b());
+        printf("recv %d %d\n", msg.a(), msg.b());
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
       zmq::send_result_t sent = socket.send(zmq::message_t("ack", 10), zmq::send_flags::none);
+
+      if (sent)
+        printf("send ack\n");
     }
   }
 
