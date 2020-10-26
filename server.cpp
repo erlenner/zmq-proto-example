@@ -25,7 +25,7 @@ int main()
     if (received)
     {
       protocol::msg_t msg;
-      msg.ParseFromString(request.to_string());
+      msg.ParseFromArray(request.data(), request.size());
       printf("recv: %d %d\n", msg.a(), msg.b());
 
       // simulate work
