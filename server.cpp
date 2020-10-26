@@ -7,32 +7,33 @@
 
 int main() 
 {
-    using namespace std::chrono_literals;
+  // initialize the zmq context with a single IO thread
+  zmq::context_t context{1};
 
-    // initialize the zmq context with a single IO thread
-    zmq::context_t context{1};
+  // construct a REP (reply) socket and bind to interface
+  zmq::socket_t socket{context, zmq::socket_type::rep};
+  socket.bind("tcp://*:5555");
 
-    // construct a REP (reply) socket and bind to interface
-    zmq::socket_t socket{context, zmq::socket_type::rep};
-    socket.bind("tcp://*:5555");
+  // prepare some static data for responses
+  const std::string data{"World"};
 
-    // prepare some static data for responses
-    const std::string data{"World"};
+  for (;;)
+  {
+    zmq::message_t request;
 
-    for (;;) 
+    // receive a request from client
+    zmq::recv_result_t received = socket.recv(request, zmq::recv_flags::none);
+    if (received)
     {
-        zmq::message_t request;
+      std::cout << "Received " << request.to_string() << std::endl;
 
-        // receive a request from client
-        socket.recv(request, zmq::recv_flags::none);
-        std::cout << "Received " << request.to_string() << std::endl;
+      // simulate work
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-        // simulate work
-        std::this_thread::sleep_for(1s);
-
-        // send the reply to the client
-        socket.send(zmq::buffer(data), zmq::send_flags::none);
+      // send the reply to the client
+      zmq::send_result_t sent = socket.send(zmq::buffer(data), zmq::send_flags::none);
     }
+  }
 
-    return 0;
+  return 0;
 }
