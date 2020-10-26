@@ -1,16 +1,27 @@
 #include <string>
 #include <stdio.h>
 
-#include <zmq.hpp>
+#include <zmq.h>
 
 #include "protocol.pb.h"
 
 int main()
 {
-  zmq::context_t context{1};
+  void *context = zmq_ctx_new();
+  assert(context != NULL);
 
-  zmq::socket_t socket{context, zmq::socket_type::req};
-  socket.connect("tcp://localhost:5555");
+  {
+    int set_io_threads = zmq_ctx_set(context, ZMQ_IO_THREADS, 1);
+    assert(set_io_threads == 0);
+  }
+
+  void *socket = zmq_socket(context, ZMQ_REQ);
+  assert(socket != NULL);
+
+  {
+    int rc = zmq_connect(socket, "tcp://localhost:5555");
+    assert(rc == 0);
+  }
 
   while (1)
   {
@@ -20,10 +31,10 @@ int main()
 
     google::protobuf::Any any;
     any.PackFrom(msg);
-    const size_t ser_size = any.ByteSizeLong();
+    const int ser_size = any.ByteSizeLong();
     char ser[ser_size];
     any.SerializeToArray(ser, any.ByteSizeLong());
-    zmq::send_result_t sent = socket.send(zmq::message_t(ser, ser_size), zmq::send_flags::none);
+    int sent = zmq_send(socket, ser, ser_size, 0);
 
     if (sent)
     {
@@ -35,6 +46,20 @@ int main()
       if (received)
         printf("recv %s\n", reply.data());
     }
+  }
+
+  // close socket
+  {
+    int rc = zmq_close(socket);
+    assert(rc == 0);
+  }
+
+  // close context
+  {
+    int rc;
+    do {
+      rc = zmq_ctx_destroy(ptr);
+    } while (rc == -1 && zmq_errno == EINTR);
   }
 
   return 0;
