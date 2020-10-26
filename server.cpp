@@ -20,19 +20,22 @@ int main()
   {
     zmq::message_t request;
 
-    // receive a request from client
     zmq::recv_result_t received = socket.recv(request, zmq::recv_flags::none);
     if (received)
     {
-      protocol::msg_t msg;
-      msg.ParseFromArray(request.data(), request.size());
-      printf("recv: %d %d\n", msg.a(), msg.b());
+      google::protobuf::Any any;
+      any.ParseFromArray(request.data(), request.size());
 
-      // simulate work
+      if (any.Is<protocol::msg_t>())
+      {
+        protocol::msg_t msg;
+        any.UnpackTo(&msg);
+        printf("recv: %d %d\n", msg.a(), msg.b());
+      }
+
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-      // send the reply to the client
-      zmq::send_result_t sent = socket.send(zmq::message_t(0), zmq::send_flags::none);
+      zmq::send_result_t sent = socket.send(zmq::message_t("ack", 10), zmq::send_flags::none);
     }
   }
 
