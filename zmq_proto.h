@@ -62,13 +62,13 @@ public:
   : socket(NULL)
   {}
 
-  zmq_proto_socket(const zmq_proto_context& context, const char *mount)
+  zmq_proto_socket(const zmq_proto_context& context, const char *addr)
   {
-    int rc = init(context, mount);
+    int rc = init(context, addr);
     assert(rc == 0);
   }
 
-  int init(const zmq_proto_context &context, const char *mount)
+  int init(const zmq_proto_context &context, const char *addr)
   {
     socket = zmq_socket(context.get_handle(), socket_type);
     assert(socket != NULL);
@@ -79,10 +79,10 @@ public:
       switch(socket_type)
       {
         case ZMQ_PROTO_REQ:
-          rc = zmq_connect(socket, mount);
+          rc = zmq_connect(socket, addr);
           break;
         case ZMQ_PROTO_REP:
-          rc = zmq_bind(socket, mount);
+          rc = zmq_bind(socket, addr);
           break;
       }
 
@@ -135,6 +135,11 @@ public:
     return 0;
   }
 
+  zmq_msg_t* get_handle()
+  {
+    return &msg;
+  }
+
   ~zmq_proto_msg()
   {
     int rc = zmq_msg_close(&msg);
@@ -150,12 +155,13 @@ zmq_proto_send(const zmq_proto_socket<socket_type>& socket, const Message& msg)
   const int ser_size = msg.ByteSizeLong();
   char ser[ser_size];
   msg.SerializeToArray(ser, msg.ByteSizeLong());
+
   int sent = zmq_send(socket.get_handle(), ser, ser_size, 0);
 
-  if (sent <= 0)
+  if (sent < 0)
   {
     assert(zmq_errno() == EAGAIN);
-    sent = 0;
+    sent = -1;
   }
 
   return sent;
@@ -164,19 +170,24 @@ zmq_proto_send(const zmq_proto_socket<socket_type>& socket, const Message& msg)
 
 template<zmq_proto_socket_type socket_type, typename Message>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-zmq_proto_recv(const zmq_proto_socket<socket_type>& socket, const Message& msg)
+zmq_proto_recv(const zmq_proto_socket<socket_type>& socket, Message& proto_msg)
 {
-  const int ser_size = msg.ByteSizeLong();
-  char ser[ser_size];
-  msg.SerializeToArray(ser, msg.ByteSizeLong());
-  int sent = zmq_send(socket.get_handle(), ser, ser_size, 0);
+  zmq_proto_msg msg{-1};
 
-  if (sent <= 0)
+  int received = zmq_msg_recv(msg.get_handle(), socket.get_handle(), 0);
+
+  if (received < 0)
   {
     assert(zmq_errno() == EAGAIN);
-    sent = 0;
+    received = -1;
+  }
+  else
+  {
+    assert(zmq_msg_size(msg.get_handle()) == static_cast<size_t>(received));
+
+    proto_msg.ParseFromArray(zmq_msg_data(msg.get_handle()), zmq_msg_size(msg.get_handle()));
   }
 
-  return sent;
+  return received;
 }
 
