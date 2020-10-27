@@ -12,21 +12,19 @@ int main()
 
   while (1)
   {
+    printf("i\n");
     protocol::msg_t msg;
     msg.set_a(435);
     msg.set_b(219);
 
-    google::protobuf::Any req;
-    req.PackFrom(msg);
-
-    int sent = zmq_proto_send(socket, req);
+    int sent = zmq_proto_send(socket, msg);
 
     if (sent >= 0)
     {
       printf("send %d %d\n", msg.a(), msg.b());
 
 
-      google::protobuf::Any rep;
+      google::protobuf::Empty rep;
       const int received = zmq_proto_recv(socket, rep);
 
       if (received >= 0)

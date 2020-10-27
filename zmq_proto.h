@@ -1,5 +1,7 @@
 #include <zmq.h>
 #include <google/protobuf/message.h>
+#include <google/protobuf/any.pb.h>
+#include <google/protobuf/empty.pb.h>
 
 //#define zmq_proto_check(...) do { int rc = __VA_ARGS__; assert(rc == 0); } while(0)
 
@@ -70,7 +72,7 @@ public:
 
   int init(const zmq_proto_context &context, const char *addr)
   {
-    socket = zmq_socket(context.get_handle(), socket_type);
+    socket = zmq_socket(context.get_handle(), static_cast<int>(socket_type));
     assert(socket != NULL);
 
     {
@@ -148,15 +150,17 @@ public:
 
 };
 
+enum zmq_proto_send_flag{ ZMQ_PROTO_NONE = 0, ZMQ_PROTO_DONTWAIT = ZMQ_DONTWAIT, ZMQ_PROTO_SNDMORE = ZMQ_SNDMORE };
+
 template<zmq_proto_socket_type socket_type, typename Message>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-zmq_proto_send(const zmq_proto_socket<socket_type>& socket, const Message& msg)
+zmq_proto_send_raw(const zmq_proto_socket<socket_type>& socket, const Message& msg, zmq_proto_send_flag flag = ZMQ_PROTO_NONE)
 {
   const int ser_size = msg.ByteSizeLong();
   char ser[ser_size];
   msg.SerializeToArray(ser, msg.ByteSizeLong());
 
-  int sent = zmq_send(socket.get_handle(), ser, ser_size, 0);
+  int sent = zmq_send(socket.get_handle(), ser, ser_size, static_cast<int>(flag));
 
   if (sent < 0)
   {
@@ -167,10 +171,19 @@ zmq_proto_send(const zmq_proto_socket<socket_type>& socket, const Message& msg)
   return sent;
 }
 
+template<zmq_proto_socket_type socket_type, typename Message>
+std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
+zmq_proto_send(const zmq_proto_socket<socket_type>& socket, const Message& msg, zmq_proto_send_flag flag = ZMQ_PROTO_NONE)
+{
+  google::protobuf::Any req;
+  req.PackFrom(msg);
+
+  return zmq_proto_send_raw(socket, req, flag);
+}
 
 template<zmq_proto_socket_type socket_type, typename Message>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-zmq_proto_recv(const zmq_proto_socket<socket_type>& socket, Message& proto_msg)
+zmq_proto_recv_raw(const zmq_proto_socket<socket_type>& socket, Message& p_msg)
 {
   zmq_proto_msg msg{-1};
 
@@ -185,9 +198,27 @@ zmq_proto_recv(const zmq_proto_socket<socket_type>& socket, Message& proto_msg)
   {
     assert(zmq_msg_size(msg.get_handle()) == static_cast<size_t>(received));
 
-    proto_msg.ParseFromArray(zmq_msg_data(msg.get_handle()), zmq_msg_size(msg.get_handle()));
+    p_msg.ParseFromArray(zmq_msg_data(msg.get_handle()), zmq_msg_size(msg.get_handle()));
   }
 
   return received;
 }
 
+template<zmq_proto_socket_type socket_type, typename Message>
+std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
+zmq_proto_recv(const zmq_proto_socket<socket_type>& socket, Message& p_msg)
+{
+  google::protobuf::Any any;
+  int received = zmq_proto_recv_raw(socket, any);
+  if (received >= 0)
+  {
+    if (any.Is<Message>())
+      any.UnpackTo(&p_msg);
+    else
+      received = 0;
+  }
+  else
+    received = -1;
+
+  return received;
+}
