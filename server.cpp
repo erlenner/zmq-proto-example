@@ -12,10 +12,6 @@ int main()
   zmq_proto_context context{1};
   zmq_proto_socket<ZMQ_PROTO_REP> socket(context, "tcp://*:5555");
 
-  //int sent = zmq_proto_send(socket, google::protobuf::Empty{});
-  //if (sent >= 0)
-  //  printf("send initial ack\n");
-
   while (1)
   {
     printf("i\n");

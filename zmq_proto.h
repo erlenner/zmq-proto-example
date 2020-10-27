@@ -3,7 +3,15 @@
 #include <google/protobuf/any.pb.h>
 #include <google/protobuf/empty.pb.h>
 
-//#define zmq_proto_check(...) do { int rc = __VA_ARGS__; assert(rc == 0); } while(0)
+#define zmq_proto_strerror zmq_strerror
+#define zmq_proto_errno zmq_errno()
+
+#ifdef ZMQ_PROTO_DEBUG
+#define zmq_proto_assert(expr) do { (void)sizeof(expr); } while(0)
+#else
+#define zmq_proto_assert(expr) do { if (!(expr)) { fprintf(stderr, "[ %s:%d %s ] " "assertion failed: (" #expr ") errno: %s\n", __FILE__, __LINE__, __func__, zmq_proto_strerror(zmq_proto_errno)); exit(1); } } while(0)
+#endif
+//#define zmq_proto_check(...) do { int rc = __VA_ARGS__; zmq_proto_assert(rc == 0); } while(0)
 
 class zmq_proto_context
 {
@@ -18,17 +26,17 @@ public:
   zmq_proto_context(int n_threads)
   {
     int rc = init(n_threads); // ignore return value
-    assert(rc == 0);
+    zmq_proto_assert(rc == 0);
   }
 
   int init(int n_threads)
   {
     context = zmq_ctx_new();
-    assert(context != NULL);
+    zmq_proto_assert(context != NULL);
 
     {
       int rc = zmq_ctx_set(context, ZMQ_IO_THREADS, n_threads);
-      assert(rc == 0);
+      zmq_proto_assert(rc == 0);
     }
 
     return 0;
@@ -46,7 +54,7 @@ public:
       rc = zmq_ctx_destroy(context);
     } while (rc == -1 && zmq_errno() == EINTR);
 
-    assert(rc == 0);
+    zmq_proto_assert(rc == 0);
     context = NULL;
   }
 };
@@ -67,13 +75,13 @@ public:
   zmq_proto_socket(const zmq_proto_context& context, const char *addr)
   {
     int rc = init(context, addr);
-    assert(rc == 0);
+    zmq_proto_assert(rc == 0);
   }
 
   int init(const zmq_proto_context &context, const char *addr)
   {
     socket = zmq_socket(context.get_handle(), static_cast<int>(socket_type));
-    assert(socket != NULL);
+    zmq_proto_assert(socket != NULL);
 
     {
       int rc;
@@ -88,7 +96,7 @@ public:
           break;
       }
 
-      assert(rc == 0);
+      zmq_proto_assert(rc == 0);
     }
 
     return 0;
@@ -102,7 +110,7 @@ public:
   ~zmq_proto_socket()
   {
     int rc = zmq_close(socket);
-    assert(rc == 0);
+    zmq_proto_assert(rc == 0);
 
     socket = NULL;
   }
@@ -128,11 +136,11 @@ public:
     if (size <= -1)
     {
       int rc = zmq_msg_init(&msg);
-      assert (rc == 0);
+      zmq_proto_assert (rc == 0);
     }
     else
     {
-      assert(false); // not implemented
+      zmq_proto_assert(false); // not implemented
     }
     return 0;
   }
@@ -145,7 +153,7 @@ public:
   ~zmq_proto_msg()
   {
     int rc = zmq_msg_close(&msg);
-    assert(rc == 0);
+    zmq_proto_assert(rc == 0);
   }
 
 };
@@ -164,7 +172,7 @@ zmq_proto_send_raw(const zmq_proto_socket<socket_type>& socket, const Message& m
 
   if (sent < 0)
   {
-    assert(zmq_errno() == EAGAIN);
+    zmq_proto_assert(zmq_errno() == EAGAIN);
     sent = -1;
   }
 
@@ -191,12 +199,12 @@ zmq_proto_recv_raw(const zmq_proto_socket<socket_type>& socket, Message& p_msg)
 
   if (received < 0)
   {
-    assert(zmq_errno() == EAGAIN);
+    zmq_proto_assert(zmq_errno() == EAGAIN);
     received = -1;
   }
   else
   {
-    assert(zmq_msg_size(msg.get_handle()) == static_cast<size_t>(received));
+    zmq_proto_assert(zmq_msg_size(msg.get_handle()) == static_cast<size_t>(received));
 
     p_msg.ParseFromArray(zmq_msg_data(msg.get_handle()), zmq_msg_size(msg.get_handle()));
   }
