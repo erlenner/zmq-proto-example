@@ -158,17 +158,17 @@ public:
 
 };
 
-enum zmq_proto_send_flag{ ZMQ_PROTO_NONE = 0, ZMQ_PROTO_DONTWAIT = ZMQ_DONTWAIT, ZMQ_PROTO_SNDMORE = ZMQ_SNDMORE };
+enum zmq_proto_send_flags { ZMQ_PROTO_NONE = 0, ZMQ_PROTO_DONTWAIT = ZMQ_DONTWAIT, ZMQ_PROTO_SNDMORE = ZMQ_SNDMORE };
 
 template<zmq_proto_socket_type socket_type, typename Message>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-zmq_proto_send_raw(const zmq_proto_socket<socket_type>& socket, const Message& msg, zmq_proto_send_flag flag = ZMQ_PROTO_NONE)
+zmq_proto_send_raw(const zmq_proto_socket<socket_type>& socket, const Message& msg, zmq_proto_send_flags flags = ZMQ_PROTO_NONE)
 {
   const int ser_size = msg.ByteSizeLong();
   char ser[ser_size];
   msg.SerializeToArray(ser, msg.ByteSizeLong());
 
-  int sent = zmq_send(socket.get_handle(), ser, ser_size, static_cast<int>(flag));
+  int sent = zmq_send(socket.get_handle(), ser, ser_size, static_cast<int>(flags));
 
   if (sent < 0)
   {
@@ -181,12 +181,12 @@ zmq_proto_send_raw(const zmq_proto_socket<socket_type>& socket, const Message& m
 
 template<zmq_proto_socket_type socket_type, typename Message>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-zmq_proto_send(const zmq_proto_socket<socket_type>& socket, const Message& msg, zmq_proto_send_flag flag = ZMQ_PROTO_NONE)
+zmq_proto_send(const zmq_proto_socket<socket_type>& socket, const Message& msg, zmq_proto_send_flags flags = ZMQ_PROTO_NONE)
 {
   google::protobuf::Any req;
   req.PackFrom(msg);
 
-  return zmq_proto_send_raw(socket, req, flag);
+  return zmq_proto_send_raw(socket, req, flags);
 }
 
 template<zmq_proto_socket_type socket_type, typename Message>
