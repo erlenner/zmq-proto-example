@@ -1,5 +1,6 @@
-#include <string>
 #include <stdio.h>
+#include <thread>
+#include <chrono>
 
 #include <zmq.h>
 #include "zmq_proto.h"
@@ -19,6 +20,8 @@ int main()
       printf("recv %d %d\n", msg.a(), msg.b());
     else if(received == 0)
       printf("got unexpected message\n");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 
   return 0;

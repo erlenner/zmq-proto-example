@@ -1,6 +1,3 @@
-#include <string>
-#include <chrono>
-#include <thread>
 #include <stdio.h>
 
 #include <zmq.hpp>

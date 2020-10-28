@@ -96,10 +96,17 @@ public:
           rc = zmq_connect(socket, addr);
           break;
         case ZMQ_PROTO_SUB:
+        {
+          {
+            int opt = 1;
+            rc = zmq_setsockopt(socket, ZMQ_CONFLATE, &opt, sizeof(opt));
+          }
+          zmq_proto_assert(rc == 0);
           rc = zmq_connect(socket, addr);
           zmq_proto_assert(rc == 0);
           rc = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, "", 0);
           break;
+        }
       }
 
       zmq_proto_assert(rc == 0);
