@@ -59,7 +59,7 @@ public:
   }
 };
 
-enum zmq_proto_socket_type{ ZMQ_PROTO_REQ = ZMQ_REQ, ZMQ_PROTO_REP = ZMQ_REP };
+enum zmq_proto_socket_type{ ZMQ_PROTO_REQ = ZMQ_REQ, ZMQ_PROTO_REP = ZMQ_REP, ZMQ_PROTO_PUB = ZMQ_PUB, ZMQ_PROTO_SUB = ZMQ_SUB };
 
 template<zmq_proto_socket_type socket_type>
 class zmq_proto_socket
@@ -88,11 +88,17 @@ public:
 
       switch(socket_type)
       {
+        case ZMQ_PROTO_REP:
+        case ZMQ_PROTO_PUB:
+          rc = zmq_bind(socket, addr);
+          break;
         case ZMQ_PROTO_REQ:
           rc = zmq_connect(socket, addr);
           break;
-        case ZMQ_PROTO_REP:
-          rc = zmq_bind(socket, addr);
+        case ZMQ_PROTO_SUB:
+          rc = zmq_connect(socket, addr);
+          zmq_proto_assert(rc == 0);
+          rc = zmq_setsockopt(socket, ZMQ_SUBSCRIBE, "", 0);
           break;
       }
 
