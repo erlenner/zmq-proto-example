@@ -65,11 +65,13 @@ template<zmq_proto_socket_type socket_type>
 class zmq_proto_socket
 {
   void *socket;
+  char *addr;
 
 public:
 
   zmq_proto_socket()
   : socket(NULL)
+  , addr(NULL)
   {}
 
   zmq_proto_socket(const zmq_proto_context& context, const char *addr)
@@ -80,6 +82,10 @@ public:
 
   int init(const zmq_proto_context &context, const char *addr)
   {
+    const int addr_size = strlen(addr) + 1;
+    this->addr = (char*)malloc(addr_size);
+    memcpy(this->addr, addr, addr_size);
+
     socket = zmq_socket(context.get_handle(), static_cast<int>(socket_type));
     zmq_proto_assert(socket != NULL);
 
@@ -122,7 +128,22 @@ public:
 
   ~zmq_proto_socket()
   {
-    int rc = zmq_close(socket);
+    switch(socket_type)
+    {
+      case ZMQ_PROTO_REP:
+      case ZMQ_PROTO_PUB:
+        break;
+      case ZMQ_PROTO_REQ:
+      case ZMQ_PROTO_SUB:
+      {
+        int rc = zmq_disconnect(socket, addr);
+        zmq_proto_assert(rc == 0);
+        break;
+      }
+    }
+    free(addr);
+
+    rc = zmq_close(socket);
     zmq_proto_assert(rc == 0);
 
     socket = NULL;
