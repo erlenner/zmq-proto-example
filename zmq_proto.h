@@ -13,17 +13,20 @@
 #endif
 //#define zmq_proto_check(...) do { int rc = __VA_ARGS__; zmq_proto_assert(rc == 0); } while(0)
 
-class zmq_proto_context
+namespace zmq_proto
+{
+
+class context_t
 {
   void *context;
 
 public:
 
-  zmq_proto_context()
+  context_t()
   : context(NULL)
   {}
 
-  zmq_proto_context(int n_threads)
+  context_t(int n_threads)
   {
     int rc = init(n_threads); // ignore return value
     zmq_proto_assert(rc == 0);
@@ -47,7 +50,7 @@ public:
     return context;
   }
 
-  ~zmq_proto_context()
+  ~context_t()
   {
     int rc;
     do {
@@ -59,26 +62,26 @@ public:
   }
 };
 
-enum zmq_proto_socket_type{ ZMQ_PROTO_REQ = ZMQ_REQ, ZMQ_PROTO_REP = ZMQ_REP, ZMQ_PROTO_PUB = ZMQ_PUB, ZMQ_PROTO_SUB = ZMQ_SUB };
+enum socket_type{ REQ = ZMQ_REQ, REP = ZMQ_REP, PUB = ZMQ_PUB, SUB = ZMQ_SUB };
 
-template<zmq_proto_socket_type socket_type>
-class zmq_proto_socket
+template<socket_type socket_type>
+class socket_t
 {
   void *socket;
 
 public:
 
-  zmq_proto_socket()
+  socket_t()
   : socket(NULL)
   {}
 
-  zmq_proto_socket(const zmq_proto_context& context, const char *addr)
+  socket_t(const context_t& context, const char *addr)
   {
     int rc = init(context, addr);
     zmq_proto_assert(rc == 0);
   }
 
-  int init(const zmq_proto_context &context, const char *addr)
+  int init(const context_t &context, const char *addr)
   {
     socket = zmq_socket(context.get_handle(), static_cast<int>(socket_type));
     zmq_proto_assert(socket != NULL);
@@ -88,14 +91,14 @@ public:
 
       switch(socket_type)
       {
-        case ZMQ_PROTO_REP:
-        case ZMQ_PROTO_PUB:
+        case REP:
+        case PUB:
           rc = zmq_bind(socket, addr);
           break;
-        case ZMQ_PROTO_REQ:
+        case REQ:
           rc = zmq_connect(socket, addr);
           break;
-        case ZMQ_PROTO_SUB:
+        case SUB:
         {
           {
             int opt = 1;
@@ -120,7 +123,7 @@ public:
     return socket;
   }
 
-  ~zmq_proto_socket()
+  ~socket_t()
   {
     int rc = zmq_close(socket);
     zmq_proto_assert(rc == 0);
@@ -130,16 +133,16 @@ public:
 };
 
 
-class zmq_proto_msg
+class msg_t
 {
   zmq_msg_t msg;
 
 public:
 
-  zmq_proto_msg()
+  msg_t()
   {}
 
-  zmq_proto_msg(int size)
+  msg_t(int size)
   {
     init(size);
   }
@@ -163,7 +166,7 @@ public:
     return &msg;
   }
 
-  ~zmq_proto_msg()
+  ~msg_t()
   {
     int rc = zmq_msg_close(&msg);
     zmq_proto_assert(rc == 0);
@@ -171,11 +174,11 @@ public:
 
 };
 
-enum zmq_proto_send_flags { ZMQ_PROTO_NONE = 0, ZMQ_PROTO_DONTWAIT = ZMQ_DONTWAIT, ZMQ_PROTO_SNDMORE = ZMQ_SNDMORE };
+enum send_flags { NONE = 0, DONTWAIT = ZMQ_DONTWAIT, SNDMORE = ZMQ_SNDMORE };
 
-template<zmq_proto_socket_type socket_type, typename Message>
+template<socket_type socket_type, typename Message>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-zmq_proto_send_raw(const zmq_proto_socket<socket_type>& socket, const Message& msg, zmq_proto_send_flags flags = ZMQ_PROTO_NONE)
+send_raw(const socket_t<socket_type>& socket, const Message& msg, send_flags flags = NONE)
 {
   const int ser_size = msg.ByteSizeLong();
   char ser[ser_size];
@@ -192,21 +195,21 @@ zmq_proto_send_raw(const zmq_proto_socket<socket_type>& socket, const Message& m
   return sent;
 }
 
-template<zmq_proto_socket_type socket_type, typename Message>
+template<socket_type socket_type, typename Message>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-zmq_proto_send(const zmq_proto_socket<socket_type>& socket, const Message& msg, zmq_proto_send_flags flags = ZMQ_PROTO_NONE)
+send(const socket_t<socket_type>& socket, const Message& msg, send_flags flags = NONE)
 {
   google::protobuf::Any req;
   req.PackFrom(msg);
 
-  return zmq_proto_send_raw(socket, req, flags);
+  return send_raw(socket, req, flags);
 }
 
-template<zmq_proto_socket_type socket_type, typename Message>
+template<socket_type socket_type, typename Message>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-zmq_proto_recv_raw(const zmq_proto_socket<socket_type>& socket, Message& p_msg)
+recv_raw(const socket_t<socket_type>& socket, Message& p_msg)
 {
-  zmq_proto_msg msg{-1};
+  msg_t msg{-1};
 
   int received = zmq_msg_recv(msg.get_handle(), socket.get_handle(), 0);
 
@@ -225,12 +228,12 @@ zmq_proto_recv_raw(const zmq_proto_socket<socket_type>& socket, Message& p_msg)
   return received;
 }
 
-template<zmq_proto_socket_type socket_type, typename Message>
+template<socket_type socket_type, typename Message>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-zmq_proto_recv(const zmq_proto_socket<socket_type>& socket, Message& p_msg)
+recv(const socket_t<socket_type>& socket, Message& p_msg)
 {
   google::protobuf::Any any;
-  int received = zmq_proto_recv_raw(socket, any);
+  int received = recv_raw(socket, any);
   if (received >= 0)
   {
     if (any.Is<Message>())
@@ -242,4 +245,6 @@ zmq_proto_recv(const zmq_proto_socket<socket_type>& socket, Message& p_msg)
     received = -1;
 
   return received;
+}
+
 }

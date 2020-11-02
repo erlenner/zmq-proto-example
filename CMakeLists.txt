@@ -8,6 +8,7 @@ find_package(Protobuf REQUIRED)
 include_directories(${Protobuf_INCLUDE_DIR})
 
 function(PROTOBUF_GENERATE_CPP_CUSTOM SRCS HDRS)
+  # lifted from https://github.com/Kitware/CMake/blob/v3.6.3/Modules/FindProtobuf.cmake#L112
   if(NOT ARGN)
     message(SEND_ERROR "Error: PROTOBUF_GENERATE_CPP_CUSTOM called without any proto files")
     return()
@@ -82,20 +83,20 @@ target_link_libraries(zmq-client
 install(TARGETS zmq-client DESTINATION bin)
 
 
-add_executable(zmq-publisher
-  publisher.cpp
-)
-target_link_libraries(zmq-publisher
-  ${ZMQ_LIBRARIES}
-  protos
-)
-install(TARGETS zmq-publisher DESTINATION bin)
-
-add_executable(zmq-subscriber
-  subscriber.cpp
-)
-target_link_libraries(zmq-subscriber
-  ${ZMQ_LIBRARIES}
-  protos
-)
-install(TARGETS zmq-subscriber DESTINATION bin)
+#add_executable(zmq-publisher
+#  publisher.cpp
+#)
+#target_link_libraries(zmq-publisher
+#  ${ZMQ_LIBRARIES}
+#  protos
+#)
+#install(TARGETS zmq-publisher DESTINATION bin)
+#
+#add_executable(zmq-subscriber
+#  subscriber.cpp
+#)
+#target_link_libraries(zmq-subscriber
+#  ${ZMQ_LIBRARIES}
+#  protos
+#)
+#install(TARGETS zmq-subscriber DESTINATION bin)

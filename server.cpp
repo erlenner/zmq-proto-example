@@ -8,14 +8,14 @@
 
 int main() 
 {
-  zmq_proto_context context{1};
-  zmq_proto_socket<ZMQ_PROTO_REP> socket(context, "tcp://*:5555");
+  zmq_proto::context_t context{1};
+  zmq_proto::socket_t<zmq_proto::REP> socket(context, "tcp://*:5555");
 
   while (1)
   {
     printf("i\n");
     protocol::msg_t req;
-    const int received = zmq_proto_recv(socket, req);
+    const int received = zmq_proto::recv(socket, req);
 
     if (received > 0)
     {
@@ -23,7 +23,7 @@ int main()
 
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-      int sent = zmq_proto_send(socket, google::protobuf::Empty{});
+      int sent = zmq_proto::send(socket, google::protobuf::Empty{});
       if (sent >= 0)
         printf("send ack\n");
     }

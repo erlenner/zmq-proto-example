@@ -6,8 +6,8 @@
 
 int main()
 {
-  zmq_proto_context context{1};
-  zmq_proto_socket<ZMQ_PROTO_REQ> socket(context, "tcp://localhost:5555");
+  zmq_proto::context_t context{1};
+  zmq_proto::socket_t<zmq_proto::REQ> socket(context, "tcp://localhost:5555");
 
   while (1)
   {
@@ -16,7 +16,7 @@ int main()
     msg.set_a(435);
     msg.set_b(219);
 
-    int sent = zmq_proto_send(socket, msg);
+    int sent = zmq_proto::send(socket, msg);
 
     if (sent >= 0)
     {
@@ -24,7 +24,7 @@ int main()
 
 
       google::protobuf::Empty rep;
-      const int received = zmq_proto_recv(socket, rep);
+      const int received = zmq_proto::recv(socket, rep);
 
       if (received >= 0)
         printf("recv ack\n");
