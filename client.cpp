@@ -1,7 +1,6 @@
 #include <string>
 #include <stdio.h>
 
-#include <zmq.h>
 #include "zmq_proto.h"
 #include "protocol.pb.h"
 

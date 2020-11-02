@@ -2,7 +2,6 @@
 #include <thread>
 #include <chrono>
 
-#include <zmq.h>
 #include "zmq_proto.h"
 #include "protocol.pb.h"
 

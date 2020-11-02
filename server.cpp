@@ -3,7 +3,6 @@
 #include <thread>
 #include <stdio.h>
 
-#include <zmq.hpp>
 #include "zmq_proto.h"
 #include "protocol.pb.h"
 
