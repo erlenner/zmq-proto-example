@@ -7,13 +7,13 @@
 
 int main()
 {
-  zmq_proto_context context{1};
-  zmq_proto_socket<ZMQ_PROTO_SUB> socket(context, "tcp://localhost:5555");
+  zmq_proto::context_t context{1};
+  zmq_proto::socket_t<zmq_proto::SUB> socket(context, "tcp://localhost:5555");
 
   while (1)
   {
     protocol::msg_t msg;
-    const int received = zmq_proto_recv(socket, msg);
+    const int received = zmq_proto::recv(msg, socket, "some_target");
 
     if (received > 0)
       printf("recv %d %d\n", msg.a(), msg.b());

@@ -230,6 +230,7 @@ recv_raw(Message& p_msg, const socket_t<socket_type>& socket, const char(&id)[id
       || !p_msg.ParseFromArray(buf + id_size, zmq_msg_size(msg.get_handle()) - id_size))
     {
       received = -1;
+      printf("got %s\n", buf);
     }
   }
 

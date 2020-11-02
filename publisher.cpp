@@ -5,8 +5,8 @@
 
 int main() 
 {
-  zmq_proto_context context{1};
-  zmq_proto_socket<ZMQ_PROTO_PUB> socket(context, "tcp://*:5555");
+  zmq_proto::context_t context{1};
+  zmq_proto::socket_t<zmq_proto::PUB> socket(context, "tcp://*:5555");
 
   while (1)
   {
@@ -15,13 +15,13 @@ int main()
     msg.set_a(435);
     msg.set_b(219);
 
-    int sent = zmq_proto_send(socket, msg);
+    int sent = zmq_proto::send(msg, socket, "some_target");
 
     if (sent >= 0)
       printf("send %d %d\n", msg.a(), msg.b());
 
-    zmq_proto_send(socket, ::google::protobuf::Empty());
-    zmq_proto_send(socket, ::google::protobuf::Empty());
+    zmq_proto::send(::google::protobuf::Empty(), socket, "some_target");
+    zmq_proto::send(::google::protobuf::Empty(), socket, "some_target");
   }
 
   return 0;
