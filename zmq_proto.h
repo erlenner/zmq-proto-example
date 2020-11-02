@@ -176,15 +176,17 @@ public:
 
 enum send_flags { NONE = 0, DONTWAIT = ZMQ_DONTWAIT, SNDMORE = ZMQ_SNDMORE };
 
-template<socket_type socket_type, typename Message>
+template<socket_type socket_type, typename Message, int id_size>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-send_raw(const socket_t<socket_type>& socket, const Message& msg, send_flags flags = NONE)
+send_raw(const Message& msg, const socket_t<socket_type>& socket, const char(&id)[id_size], send_flags flags = NONE)
 {
-  const int ser_size = msg.ByteSizeLong();
-  char ser[ser_size];
-  msg.SerializeToArray(ser, msg.ByteSizeLong());
+  // first id as null terminated raw string, then serialized protobuf message
+  const int buf_size = id_size + msg.ByteSizeLong();
+  char buf[buf_size];
+  memcpy(buf, id, id_size);
+  msg.SerializeToArray(buf + id_size, msg.ByteSizeLong());
 
-  int sent = zmq_send(socket.get_handle(), ser, ser_size, static_cast<int>(flags));
+  int sent = zmq_send(socket.get_handle(), buf, buf_size, static_cast<int>(flags));
 
   if (sent < 0)
   {
@@ -195,19 +197,19 @@ send_raw(const socket_t<socket_type>& socket, const Message& msg, send_flags fla
   return sent;
 }
 
-template<socket_type socket_type, typename Message>
+template<socket_type socket_type, typename Message, int id_size>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-send(const socket_t<socket_type>& socket, const Message& msg, send_flags flags = NONE)
+send(const Message& msg, const socket_t<socket_type>& socket, const char(&id)[id_size], send_flags flags = NONE)
 {
   google::protobuf::Any req;
   req.PackFrom(msg);
 
-  return send_raw(socket, req, flags);
+  return send_raw(req, socket, id, flags);
 }
 
-template<socket_type socket_type, typename Message>
+template<socket_type socket_type, typename Message, int id_size>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-recv_raw(const socket_t<socket_type>& socket, Message& p_msg)
+recv_raw(Message& p_msg, const socket_t<socket_type>& socket, const char(&id)[id_size])
 {
   msg_t msg{-1};
 
@@ -222,18 +224,24 @@ recv_raw(const socket_t<socket_type>& socket, Message& p_msg)
   {
     zmq_proto_assert(zmq_msg_size(msg.get_handle()) == static_cast<size_t>(received));
 
-    p_msg.ParseFromArray(zmq_msg_data(msg.get_handle()), zmq_msg_size(msg.get_handle()));
+    const char* buf = (char*)zmq_msg_data(msg.get_handle());
+
+    if ((strncmp(buf, id, id_size) != 0)
+      || !p_msg.ParseFromArray(buf + id_size, zmq_msg_size(msg.get_handle()) - id_size))
+    {
+      received = -1;
+    }
   }
 
   return received;
 }
 
-template<socket_type socket_type, typename Message>
+template<socket_type socket_type, typename Message, int id_size>
 std::enable_if_t<std::is_base_of<::google::protobuf::Message, Message>::value, int>
-recv(const socket_t<socket_type>& socket, Message& p_msg)
+recv(Message& p_msg, const socket_t<socket_type>& socket, const char(&id)[id_size])
 {
   google::protobuf::Any any;
-  int received = recv_raw(socket, any);
+  int received = recv_raw(any, socket, id);
   if (received >= 0)
   {
     if (any.Is<Message>())

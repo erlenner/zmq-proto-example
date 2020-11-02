@@ -13,9 +13,10 @@ int main()
 
   while (1)
   {
-    printf("i\n");
+    const char endpoint_id[] = "some_target";
+
     protocol::msg_t req;
-    const int received = zmq_proto::recv(socket, req);
+    const int received = zmq_proto::recv(req, socket, endpoint_id);
 
     if (received > 0)
     {
@@ -23,7 +24,7 @@ int main()
 
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-      int sent = zmq_proto::send(socket, google::protobuf::Empty{});
+      int sent = zmq_proto::send(google::protobuf::Empty{}, socket, endpoint_id);
       if (sent >= 0)
         printf("send ack\n");
     }
